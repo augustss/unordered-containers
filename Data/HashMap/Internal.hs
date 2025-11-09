@@ -181,6 +181,10 @@ import qualified Data.List                   as List
 import qualified GHC.Exts                    as Exts
 import qualified Language.Haskell.TH.Syntax  as TH
 
+#if defined(__MHS__)
+import Data.Traversable
+#endif
+
 -- | Convenience function.  Compute a hash value for the given value.
 hash :: H.Hashable a => a -> Hash
 hash = fromIntegral . H.hash
@@ -191,9 +195,11 @@ data Leaf k v = L !k v
 instance (NFData k, NFData v) => NFData (Leaf k v) where
     rnf (L k v) = rnf k `seq` rnf v
 
+#if !defined(__MHS__)
 -- | @since 0.2.17.0
 instance (TH.Lift k, TH.Lift v) => TH.Lift (Leaf k v) where
   liftTyped (L k v) = [|| L k $! v ||]
+#endif
 
 -- | @since 0.2.14.0
 instance NFData k => NFData1 (Leaf k) where
@@ -700,7 +706,11 @@ lookupRecordCollision# h k m =
 -- this whole thing is always inlined, we don't have to worry about
 -- any extra CPS overhead.
 lookupCont ::
+#if !defined(__MHS__)
   forall rep (r :: TYPE rep) k v.
+#else
+  forall r k v.
+#endif
      Eq k
   => ((# #) -> r)    -- Absent continuation
   -> (v -> Int -> r) -- Present continuation
@@ -914,10 +924,11 @@ setAtPosition i k x ary = A.update ary i (L k x)
 
 
 -- | In-place update version of insert
-unsafeInsert :: (Eq k, Hashable k) => k -> v -> HashMap k v -> HashMap k v
+unsafeInsert :: forall k v. (Eq k, Hashable k) => k -> v -> HashMap k v -> HashMap k v
 unsafeInsert k0 v0 m0 = runST (go h0 k0 v0 0 m0)
   where
     h0 = hash k0
+    go :: forall s. Hash -> k -> v -> Int -> HashMap k v -> ST s (HashMap k v)
     go !h !k x !_ Empty = return $! Leaf h (L k x)
     go h k x s t@(Leaf hy l@(L ky y))
         | hy == h = if ky == k
@@ -2413,7 +2424,11 @@ fromListWithKey f = List.foldl' (\ m (k, v) -> unsafeInsertWithKey (\k' a b -> (
 -- | \(O(n)\) Look up the value associated with the given key in an
 -- array.
 lookupInArrayCont ::
+#if !defined(__MHS__)
   forall rep (r :: TYPE rep) k v.
+#else
+  forall r k v.
+#endif
   Eq k => ((# #) -> r) -> (v -> Int -> r) -> k -> A.Array (Leaf k v) -> r
 lookupInArrayCont absent present k0 ary0 = go k0 ary0 0 (A.length ary0)
   where
@@ -2666,9 +2681,11 @@ otherOfOneOrZero :: Int -> Int
 otherOfOneOrZero i = 1 - i
 {-# INLINE otherOfOneOrZero #-}
 
+#if !defined(__MHS__)
 ------------------------------------------------------------------------
 -- IsList instance
 instance (Eq k, Hashable k) => Exts.IsList (HashMap k v) where
     type Item (HashMap k v) = (k, v)
     fromList = fromList
     toList   = toList
+#endif

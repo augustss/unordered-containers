@@ -464,7 +464,7 @@ deleteM ary idx = do
   where !count = length ary
 {-# INLINE deleteM #-}
 
-map :: (a -> b) -> Array a -> Array b
+map :: forall a b . (a -> b) -> Array a -> Array b
 map f = \ ary ->
     let !n = length ary
     in run $ do
@@ -472,6 +472,7 @@ map f = \ ary ->
         go ary mary 0 n
         return mary
   where
+    go :: forall s. Array a -> MArray s b -> Int -> Int -> ST s ()
     go ary mary i n
         | i >= n    = return ()
         | otherwise = do
@@ -481,7 +482,7 @@ map f = \ ary ->
 {-# INLINE map #-}
 
 -- | Strict version of 'map'.
-map' :: (a -> b) -> Array a -> Array b
+map' :: forall a b . (a -> b) -> Array a -> Array b
 map' f = \ ary ->
     let !n = length ary
     in run $ do
@@ -489,6 +490,7 @@ map' f = \ ary ->
         go ary mary 0 n
         return mary
   where
+    go :: forall s . Array a -> MArray s b -> Int -> Int -> ST s ()
     go ary mary i n
         | i >= n    = return ()
         | otherwise = do
@@ -497,7 +499,7 @@ map' f = \ ary ->
              go ary mary (i+1) n
 {-# INLINE map' #-}
 
-filter :: (a -> Bool) -> Array a -> Array a
+filter :: forall a . (a -> Bool) -> Array a -> Array a
 filter f = \ ary ->
     let !n = length ary
     in run $ do
@@ -508,6 +510,7 @@ filter f = \ ary ->
     -- Without the @!@ on @ary@ we end up reboxing the array when using
     -- 'differenceCollisions'. See
     -- https://gitlab.haskell.org/ghc/ghc/-/issues/26525.
+    go_filter :: forall s . Array a -> MArray s a -> Int -> Int -> Int -> ST s Int
     go_filter !ary !mary !iAry !iMary !n
       | iAry >= n = return iMary
       | otherwise = do
@@ -519,7 +522,7 @@ filter f = \ ary ->
           else go_filter ary mary (iAry + 1) iMary n
 {-# INLINE filter #-}
 
-fromList :: Int -> [a] -> Array a
+fromList :: forall a . Int -> [a] -> Array a
 fromList n xs0 =
     CHECK_EQ("fromList", n, Prelude.length xs0)
         run $ do
@@ -527,11 +530,12 @@ fromList n xs0 =
             go xs0 mary 0
             return mary
   where
+    go :: forall s . [a] -> MArray s a -> Int -> ST s ()
     go []     !_   !_ = return ()
     go (x:xs) mary i  = do write mary i x
                            go xs mary (i+1)
 
-fromList' :: Int -> [a] -> Array a
+fromList' :: forall a . Int -> [a] -> Array a
 fromList' n xs0 =
     CHECK_EQ("fromList'", n, Prelude.length xs0)
         run $ do
@@ -539,16 +543,19 @@ fromList' n xs0 =
             go xs0 mary 0
             return mary
   where
+    go :: forall s . [a] -> MArray s a -> Int -> ST s ()
     go []      !_   !_ = return ()
     go (!x:xs) mary i  = do write mary i x
                             go xs mary (i+1)
 
+#if !defined(__MHS__)
 -- | @since 0.2.17.0
 instance TH.Lift a => TH.Lift (Array a) where
   liftTyped ar = [|| fromList' arlen arlist ||]
     where
       arlen = length ar
       arlist = toList ar
+#endif
 
 toList :: Array a -> [a]
 toList = foldr (:) []

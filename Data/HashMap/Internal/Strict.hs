@@ -123,7 +123,7 @@ module Data.HashMap.Internal.Strict
     ) where
 
 import Control.Applicative   (Const (..))
-import Control.Monad.ST      (runST)
+import Control.Monad.ST      (runST, ST)
 import Data.Bits             ((.&.), (.|.))
 import Data.Coerce           (coerce)
 import Data.Functor.Identity (Identity (..))
@@ -227,11 +227,12 @@ unsafeInsertWith :: (Eq k, Hashable k) => (v -> v -> v) -> k -> v -> HashMap k v
 unsafeInsertWith f k0 v0 m0 = unsafeInsertWithKey (const f) k0 v0 m0
 {-# INLINABLE unsafeInsertWith #-}
 
-unsafeInsertWithKey :: (Eq k, Hashable k) => (k -> v -> v -> v) -> k -> v -> HashMap k v
+unsafeInsertWithKey :: forall k v. (Eq k, Hashable k) => (k -> v -> v -> v) -> k -> v -> HashMap k v
                     -> HashMap k v
 unsafeInsertWithKey f k0 v0 m0 = runST (go h0 k0 v0 0 m0)
   where
     h0 = hash k0
+    go :: forall s. Hash -> k -> v -> Int -> HashMap k v -> ST s (HashMap k v)
     go !h !k x !_ Empty = return $! leaf h k x
     go h k x s t@(Leaf hy l@(L ky y))
         | hy == h = if ky == k
