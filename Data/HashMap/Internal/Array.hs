@@ -548,7 +548,7 @@ fromList' n xs0 =
     go (!x:xs) mary i  = do write mary i x
                             go xs mary (i+1)
 
-#if !defined(__MHS__)
+#if defined(__GLASGOW_HASKELL__)
 -- | @since 0.2.17.0
 instance TH.Lift a => TH.Lift (Array a) where
   liftTyped ar = [|| fromList' arlen arlist ||]

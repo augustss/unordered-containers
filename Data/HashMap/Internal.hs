@@ -148,6 +148,9 @@ module Data.HashMap.Internal
     , adjust#
     ) where
 
+import Data.Traversable           -- MicroHs needs this since its Prelude does not have Foldable&Traversable.
+                                  -- It's harmless for GHC, and putting it first avoid a warning.
+
 import Control.Applicative        (Const (..))
 import Control.DeepSeq            (NFData (..), NFData1 (..), NFData2 (..))
 import Control.Monad.ST           (ST, runST)
@@ -181,10 +184,6 @@ import qualified Data.List                   as List
 import qualified GHC.Exts                    as Exts
 import qualified Language.Haskell.TH.Syntax  as TH
 
-#if defined(__MHS__)
-import Data.Traversable
-#endif
-
 -- | Convenience function.  Compute a hash value for the given value.
 hash :: H.Hashable a => a -> Hash
 hash = fromIntegral . H.hash
@@ -195,7 +194,7 @@ data Leaf k v = L !k v
 instance (NFData k, NFData v) => NFData (Leaf k v) where
     rnf (L k v) = rnf k `seq` rnf v
 
-#if !defined(__MHS__)
+#if defined(__GLASGOW_HASKELL__)
 -- | @since 0.2.17.0
 instance (TH.Lift k, TH.Lift v) => TH.Lift (Leaf k v) where
   liftTyped (L k v) = [|| L k $! v ||]
@@ -706,7 +705,7 @@ lookupRecordCollision# h k m =
 -- this whole thing is always inlined, we don't have to worry about
 -- any extra CPS overhead.
 lookupCont ::
-#if !defined(__MHS__)
+#if defined(__GLASGOW_HASKELL__)
   forall rep (r :: TYPE rep) k v.
 #else
   forall r k v.
@@ -2424,7 +2423,7 @@ fromListWithKey f = List.foldl' (\ m (k, v) -> unsafeInsertWithKey (\k' a b -> (
 -- | \(O(n)\) Look up the value associated with the given key in an
 -- array.
 lookupInArrayCont ::
-#if !defined(__MHS__)
+#if defined(__GLASGOW_HASKELL__)
   forall rep (r :: TYPE rep) k v.
 #else
   forall r k v.
@@ -2681,7 +2680,7 @@ otherOfOneOrZero :: Int -> Int
 otherOfOneOrZero i = 1 - i
 {-# INLINE otherOfOneOrZero #-}
 
-#if !defined(__MHS__)
+#if defined(__GLASGOW_HASKELL__)
 ------------------------------------------------------------------------
 -- IsList instance
 instance (Eq k, Hashable k) => Exts.IsList (HashMap k v) where

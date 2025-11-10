@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE MagicHash     #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy   #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_HADDOCK not-home #-}
